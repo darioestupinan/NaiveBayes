@@ -1,68 +1,61 @@
-﻿using System;
+﻿#region Namespaces
+using ArffFileProcesser;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using ArffFileProcesser;
-using System.IO;
+#endregion
 
 namespace NaiveBayes
 {
-    public class BayesClassifier<TFileProcessed, TAttributeType> where TAttributeType : IComparable
+    public class NaiveBayes<TFileProcessed, TAttributeType> where TAttributeType : IComparable
     {
+        #region Attributes
         private TagDictionary<TFileProcessed, TAttributeType> _tags = new TagDictionary<TFileProcessed, TAttributeType>();
         private TagDictionary<TFileProcessed, TAttributeType> _cache;
 
         private readonly IFileProcesser<TFileProcessed> _tokenizer;
-        //private readonly ICombiner _combiner;
+        private readonly IDistribution _distribution;
 
         private bool _mustRecache;
         private const double Tolerance = 0.0001;
         private const double Threshold = 0.1;
+        #endregion
 
-        //public BayesClassifier(IFileProcesser<TFileProcessed> tokenizer)
-        //    : this(tokenizer)//new RobinsonCombiner())
-        //{
-        //}
+        #region Constructors
+        public NaiveBayes(IFileProcesser<TFileProcessed> tokenizer)
+           : this(tokenizer, new StandardDeviation())
+        {
+        }
 
-        public BayesClassifier(IFileProcesser<TFileProcessed> tokenizer)//, ICombiner combiner)
+        public NaiveBayes(IFileProcesser<TFileProcessed> tokenizer, IDistribution distribution)
         {
             if (tokenizer == null) throw new ArgumentNullException("tokenizer");
-            //if (combiner == null) throw new ArgumentNullException("combiner");
+            if (distribution == null) throw new ArgumentNullException("combiner");
 
             _tokenizer = tokenizer;
-            //_combiner = combiner;
+            _distribution = distribution;
 
             _tags.SystemTag = new TagData<TFileProcessed>();
             _mustRecache = true;
         }
+        #endregion
 
-        /// <summary>
-        /// Create a new tag, without actually doing any training.
-        /// </summary>
-        /// <param name="tagId">Tag Id</param>
+        #region Public Methods
         public void AddTag(TAttributeType tagId)
         {
             GetAndAddIfNotFound(_tags.Items, tagId);
             _mustRecache = true;
         }
 
-        /// <summary>
-        /// Remove a tag
-        /// </summary>
-        /// <param name="tagId">Tag Id</param>
         public void RemoveTag(TAttributeType tagId)
         {
             _tags.Items.Remove(tagId);
             _mustRecache = true;
         }
 
-        /// <summary>
-        /// Change the Id of a tag
-        /// </summary>
-        /// <param name="oldTagId">Old Tag Id</param>
-        /// <param name="newTagId">New Tag Id</param>
         public void ChangeTagId(TAttributeType oldTagId, TAttributeType newTagId)
         {
             _tags.Items[newTagId] = _tags.Items[oldTagId];
@@ -70,11 +63,6 @@ namespace NaiveBayes
             _mustRecache = true;
         }
 
-        /// <summary>
-        /// Merge an existing tag into another
-        /// </summary>
-        /// <param name="sourceTagId">Tag to merged to destTagId and removed</param>
-        /// <param name="destTagId">Destination tag Id</param>
         public void MergeTags(TAttributeType sourceTagId, TAttributeType destTagId)
         {
             var sourceTag = _tags.Items[sourceTagId];
@@ -98,77 +86,19 @@ namespace NaiveBayes
             _mustRecache = true;
         }
 
-        /// <summary>
-        /// Return a TagData object of a Tag Id informed
-        /// </summary>
-        /// <param name="tagId">Tag Id</param>
         public TagData<TFileProcessed> GetTagById(TAttributeType tagId)
         {
             return _tags.Items.ContainsKey(tagId) ? _tags.Items[tagId] : null;
         }
 
-        /// <summary>
-        /// Save Bayes Text Classifier into a file
-        /// </summary>
-        /// <param name="path">The file to write to</param>
-        public void Save(string path)
-        {
-            using (var streamWriter = new StreamWriter(path, false, Encoding.UTF8))
-            {
-                JsonSerializer.Create().Serialize(streamWriter, _tags);
-            }
-        }
-
-        /// <summary>
-        /// Load Bayes Text Classifier from a file
-        /// </summary>
-        /// <param name="path">The file to open for reading</param>
-        public void Load(string path)
-        {
-            using (var streamReader = new StreamReader(path, Encoding.UTF8))
-            {
-                using (var jsonTextReader = new JsonTextReader(streamReader))
-                {
-                    _tags = JsonSerializer.Create().Deserialize<TagDictionary<TFileProcessed, TAttributeType>>(jsonTextReader);
-                }
-            }
-            _mustRecache = true;
-        }
-
-        /// <summary>
-        /// Import Bayes Text Classifier from a json string
-        /// </summary>
-        /// <param name="json">The json content to be loaded</param>
-        public void ImportJsonData(string json)
-        {
-            _tags = JsonConvert.DeserializeObject<TagDictionary<TFileProcessed, TAttributeType>>(json);
-            _mustRecache = true;
-        }
-
-        /// <summary>
-        /// Export Bayes Text Classifier to a json string
-        /// </summary>
-        public string ExportJsonData()
-        {
-            return JsonConvert.SerializeObject(_tags);
-        }
-
-        /// <summary>
-        /// Return a sorted list of Tag Ids
-        /// </summary>
         public IEnumerable<TAttributeType> TagIds()
         {
             return _tags.Items.Keys.OrderBy(p => p);
         }
 
-        /// <summary>
-        /// Train Bayes by telling him that input belongs in tag.
-        /// </summary>
-        /// <param name="tagId">Tag Id</param>
-        /// <param name="input">Input to be trained</param>
         public void Train(TAttributeType tagId, string input)
         {
-            var tokens = _tokenizer.Tokenize(input);
+            var tokens = _tokenizer.Process(input);
             var tag = GetAndAddIfNotFound(_tags.Items, tagId);
             _train(tag, tokens);
             _tags.SystemTag.TrainCount += 1;
@@ -176,14 +106,9 @@ namespace NaiveBayes
             _mustRecache = true;
         }
 
-        /// <summary>
-        /// Untrain Bayes by telling him that input no more belongs in tag.
-        /// </summary>
-        /// <param name="tagId">Tag Id</param>
-        /// <param name="input">Input to be untrained</param>
         public void Untrain(TAttributeType tagId, string input)
         {
-            var tokens = _tokenizer.Tokenize(input);
+            var tokens = _tokenizer.Process(input);
             var tag = _tags.Items[tagId];
             if (tag == null)
             {
@@ -195,13 +120,9 @@ namespace NaiveBayes
             _mustRecache = true;
         }
 
-        /// <summary>
-        /// Returns the scores in each tag the provided input
-        /// </summary>
-        /// <param name="input">Input to be classified</param>
         public Dictionary<TAttributeType, double> Classify(string input)
         {
-            var tokens = _tokenizer.Tokenize(input).ToList();
+            var tokens = _tokenizer.Process(input).ToList();
             var tags = CreateCacheAnsGetTags();
 
             var stats = new Dictionary<TAttributeType, double>();
@@ -211,11 +132,50 @@ namespace NaiveBayes
                 var probs = GetProbabilities(tag.Value, tokens).ToList();
                 if (probs.Count() != 0)
                 {
-                    stats[tag.Key] = _combiner.Combine(probs);
+                    stats[tag.Key] = _distribution.ApplyDistribution(probs);
                 }
             }
             return stats.OrderByDescending(s => s.Value).ToDictionary(s => s.Key, pair => pair.Value);
         }
+
+        #region Input Output Methods
+        public void Save(string path)
+        {
+            using (var streamWriter = new StreamWriter(path, false, Encoding.UTF8))
+            {
+                JsonSerializer.Create().Serialize(streamWriter, _tags);
+            }
+        }
+
+        public void Load(string path)
+        {
+            using (var textReader = new StreamReader(path, Encoding.UTF8))
+            {
+                //var result = textReader.ReadToEnd();
+                using (var jsonTextReader = new JsonTextReader(textReader))
+                {
+                    var text = jsonTextReader.ReadAsString();
+                    var jsonSerializer = JsonSerializer.Create();
+                    var deserialized = jsonSerializer.Deserialize<TagDictionary<TFileProcessed, TAttributeType>>(jsonTextReader);
+                    //_tags = JsonSerializer.Create().Deserialize<TagDictionary<TFileProcessed, TAttributeType>>(text);
+                }
+            }
+            _mustRecache = true;
+        }
+
+        public void ImportJsonData(string json)
+        {
+            _tags = JsonConvert.DeserializeObject<TagDictionary<TFileProcessed, TAttributeType>>(json);
+            _mustRecache = true;
+        }
+
+        public string ExportJsonData()
+        {
+            return JsonConvert.SerializeObject(_tags);
+        }
+        #endregion
+
+        #endregion
 
         #region Private Methods
 
