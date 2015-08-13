@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="IDistribution.cs" />
     <Compile Include="NaiveBayes.cs" />
+    <Compile Include="NaiveBayesModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

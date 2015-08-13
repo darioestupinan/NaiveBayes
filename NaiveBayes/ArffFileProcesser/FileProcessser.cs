@@ -1,60 +1,129 @@
-﻿using System;
+﻿#region Namespaces
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+
+#endregion
 
 namespace ArffFileProcesser
 {
     public interface IFileProcesser<out TFileProcessed>
     {
-        IEnumerable<TFileProcessed> Process(object input);
+        ArffModel Process(object input);
     }
 
     public class SimpleFileProcceser : IFileProcesser<string>
     {
-        private readonly Regex _wordRe = new Regex(@"\w+");
-        private readonly bool _convertToLower;
-        private readonly List<string> _ignoreList;
+        #region Attributes
 
-        public SimpleFileProcceser() : this(true, null)
+        private readonly Regex _wordRe = new Regex(@"\w+");
+        private readonly Regex _lineSplit = new Regex(@"\r\n |\r |\n");
+        private readonly ArffModel _model;
+
+        #endregion
+
+        #region Constructors
+
+        public SimpleFileProcceser()
         {
+            _model = new ArffModel();
         }
-        
-        public SimpleFileProcceser(bool convertToLower, List<string> ignoreList)
-        {
-            _ignoreList = ignoreList;
-            _convertToLower = convertToLower;
-        }
-        
-        public IEnumerable<string> Process(object input)
+        #endregion
+
+        #region Public Methods
+        public ArffModel Process(object input)
         {
             if (input.GetType() != typeof(string))
             {
                 throw new FormatException(string.Format("Expected string, given {0}", input.GetType()));
             }
-            var tokens = MatchParameters(input);
-            if (_ignoreList == null)
-            {
-                return tokens;
-            }
-            return tokens.Where(token => !_ignoreList.Contains(token));
+            var lines = _lineSplit.Split((string)input).Where(line => !string.IsNullOrEmpty(line)).ToArray();
+
+            GetAllData(lines);
+
+            return _model;
         }
 
-        private IEnumerable<string> MatchParameters(object input)
+        #endregion
+
+        #region Private Methods
+        
+        private void GetAllData(string[] lines)
         {
-            foreach (Match match in _wordRe.Matches((string)input))
+            for (var i = 0; i < lines.Count(); i++)
             {
-                if (_convertToLower)
-                {
-                    yield return match.Value.ToLower();
-                }
+                var currentLine = lines[i].Replace('\r', ' ').Trim();
+                if (string.IsNullOrEmpty(currentLine)) continue;
+                if (currentLine.StartsWith("@"))
+                    GetFileDescriptors(currentLine);
                 else
+                    GetFileData(currentLine);                
+            }
+        }
+
+        private void GetFileDescriptors(string currentLine)
+        {
+            var words = _wordRe.Matches(currentLine).Cast<Match>().Select(m => m.Value).ToList();
+            if (words.Count > 1)
+            {
+                var descriptor = words[0];
+                words.RemoveAt(0);
+                var definitionList = words;
+                ProcessDescriptors(descriptor, definitionList);
+            }
+        }
+
+        private void GetFileData (string currentLine)
+        {
+            var words = currentLine.Split(new[] { ',' }).ToList();
+            if (words.Count == _model.Attributes.Count)
+            {
+                for (var j = 0; j < words.Count; j++)
                 {
-                    yield return match.Value;
+                    _model.Attributes[j].AddValues(words[j]);
                 }
             }
         }
+
+        private void ProcessDescriptors(string descriptor, List<string> descriptorDefinition)
+        {
+            switch (descriptor)
+            {
+                case "relation":
+                    ProcessRelation(descriptorDefinition);
+                    break;
+
+                case "attribute":
+                    ProcessAttributes(descriptorDefinition);
+                    break;
+
+                default:
+                    break;
+
+            }
+        }
+
+        private void ProcessRelation(List<string> relationDefinition)
+        {
+            var relationName = string.Join(" ", relationDefinition);
+            _model.Relation = relationName;
+        }
+
+        private void ProcessAttributes (List<string> attributeDefinition)
+        {
+            var currentAttribute = new Attribute();
+            for (var j = 0; j < attributeDefinition.Count; j++)
+            {
+                if (j == 0) currentAttribute.Name = attributeDefinition[j];
+                else
+                    currentAttribute.AddDefinition(attributeDefinition[j]);
+            }
+            _model.AddAttribute(currentAttribute);
+        }
     }
+
+    #endregion
 }
+

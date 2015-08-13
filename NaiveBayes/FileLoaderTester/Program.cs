@@ -1,11 +1,8 @@
 ﻿using ArffFileProcesser;
 using FileLoader;
 using NaiveBayes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FileLoaderTester
 {
@@ -17,6 +14,10 @@ namespace FileLoaderTester
             var arffFilePath = fileLoader.GetPath(string.Empty);
 
             IFileProcesser<string> fileProcesser = new SimpleFileProcceser();
+            using (var textReader = new StreamReader(arffFilePath, Encoding.UTF8))
+            {
+                var processedFile = fileProcesser.Process(textReader.ReadToEnd());
+            }
             //var proccessedFile = fileProcesser.Process(arffFile.ReadToEnd());
 
             var naiveBayesClassifier = new NaiveBayes<string, string>(fileProcesser);
