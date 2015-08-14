@@ -99,12 +99,12 @@ namespace NaiveBayes
 
     public class DiscreteAttributeOcurrenceModel : OcurrenceModelBase, IOcurrenceModel
     {
-        public double Total { get; set; }
+        public double Value { get; set; }
         public override bool IsContinuous { get { return false; } }
 
         public IList<double> GetValues(string currentAttribute, string className)
         {
-            var listValues = new List<double> { Total };
+            var listValues = new List<double> { Value };
             return listValues;
         }
     }

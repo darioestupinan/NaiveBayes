@@ -1,5 +1,6 @@
 ﻿#region Namespaces
 using ArffFileProcesser;
+using FileLoader;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -45,8 +46,7 @@ namespace NaiveBayes
         #region Public Methods
 
         public void TrainFromSet()
-        {
-            
+        {           
             var naiveBayesModel = new NaiveBayesModel();
             naiveBayesModel.OriginalData = _model;
             naiveBayesModel.TargetAttribute = _targetAttribute;
@@ -103,22 +103,23 @@ namespace NaiveBayes
                         for (var j = 0; j < attribute.Definition.Count; j++)
                         {
                             var ocurrenceModel = new DiscreteAttributeOcurrenceModel();
-                            ocurrenceModel.CurrentAttributeName = attribute.Definition[j];
-                            ocurrenceModel.TargetAttributeClassName = classes.ClassName;
-                            ocurrenceModel.Total = selectedData.Cast<List<object>>().Where(item => item[i].ToString().Equals(attribute.Definition[j], StringComparison.InvariantCultureIgnoreCase)).Count();
+                            ocurrenceModel.CurrentAttributeName = currentAttributteName + " " + attribute.Definition[j];
+                            ocurrenceModel.TargetAttributeClassName =  classes.ClassName;
+                            ocurrenceModel.Value = selectedData.Cast<List<object>>().Where(item => item[i].ToString().Equals(attribute.Definition[j], StringComparison.InvariantCultureIgnoreCase)).Count();
                             ocurrenceModelList.Add(ocurrenceModel);
                         }
                         //total of the current attribute in range of the class
                         var totalOcurrenceModel = new DiscreteAttributeOcurrenceModel();
-                        totalOcurrenceModel.CurrentAttributeName = "total";
+                        totalOcurrenceModel.CurrentAttributeName = currentAttributteName + " total";
                         totalOcurrenceModel.TargetAttributeClassName = classes.ClassName;
-                        totalOcurrenceModel.Total = selectedData.Count();
+                        totalOcurrenceModel.Value = selectedData.Count();
                         ocurrenceModelList.Add(totalOcurrenceModel);
                         naiveBayesModel.AddOcurrenceMatrixRange(ocurrenceModelList);
                     }
                 }
             }
-            var resultJson = JsonConvert.SerializeObject(naiveBayesModel);
+            IFileLoader loader = new FileLoader.FileLoader();
+            loader.SaveJsonFileToText(JsonConvert.SerializeObject(naiveBayesModel), string.Empty);
         }
 
         #endregion
