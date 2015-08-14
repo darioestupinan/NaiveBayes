@@ -78,13 +78,22 @@ namespace ArffFileProcesser
         private void GetFileData (string currentLine)
         {
             var words = currentLine.Split(new[] { ',' }).ToList();
+            var row = new List<object>();
             if (words.Count == _model.Attributes.Count)
             {
                 for (var j = 0; j < words.Count; j++)
                 {
                     _model.Attributes[j].AddValues(words[j]);
+                    if (_model.Attributes[j].Definition.Count == 1 && _model.Attributes[j].Definition[0].Equals("Real", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        var numericValue = Double.Parse(words[j]);
+                        row.Add(numericValue);
+                    }
+                    else row.Add(words[j]);
                 }
+                _model.AddDataRow(row);
             }
+            
         }
 
         private void ProcessDescriptors(string descriptor, List<string> descriptorDefinition)
