@@ -1,6 +1,7 @@
 ﻿using ArffFileProcesser;
 using FileLoader;
 using NaiveBayes;
+using System;
 using System.IO;
 using System.Text;
 
@@ -20,7 +21,12 @@ namespace FileLoaderTester
                 var naiveBayes = new NaiveBayes.NaiveBayes(processedFile, null, "Drug");
                 naiveBayes.TrainFromSet();
 
+                var testModel = new TestDataModel();
+                var result = naiveBayes.TestNewData(testModel.TestData);
 
+                Console.WriteLine("the recommended drug is : " + result.ResultAttribute);
+                Console.WriteLine("the porcentage of accuracy is: " + result.Values.ToString());
+                Console.ReadKey();
             };
         }
     }

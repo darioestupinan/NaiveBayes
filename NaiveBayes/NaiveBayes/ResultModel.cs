@@ -4,7 +4,7 @@ namespace NaiveBayes
 {
     public class ResultModel
     {
-        public string resultAttribute { get; private set; }
-        public IList<object> Values { get; set; }
+        public string ResultAttribute { get; set; }
+        public double Values { get; set; }
     }
 }

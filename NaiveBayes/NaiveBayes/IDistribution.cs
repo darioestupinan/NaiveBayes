@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Objects;
 using System.Linq;
+
 
 
 namespace NaiveBayes
@@ -28,14 +30,17 @@ namespace NaiveBayes
 
         public double GetStandardDeviation()
         {
-            double stddev = 0;
-            if (_values.Count > 0)
+            double M = 0.0;
+            double S = 0.0;
+            int k = 1;
+            foreach (double value in _values)
             {
-                var average = _values.Average();
-                double sum = _values.Sum(d => Math.Pow(d - average, 2));
-                stddev = Math.Sqrt((sum) / (_values.Count() - 1));
+                double tmpM = M;
+                M += (value - tmpM) / k;
+                S += (value - tmpM) * (value - M);
+                k++;
             }
-            return stddev;
+            return Math.Sqrt(S / (k - 1));
         }
         
 

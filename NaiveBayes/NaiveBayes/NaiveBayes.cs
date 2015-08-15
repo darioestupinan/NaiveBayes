@@ -62,7 +62,7 @@ namespace NaiveBayes
                     var listValues = currentAttribute.Values.Cast<double>().ToList();
                     var delta = CalculateDelta(listValues);
                     var distinct = CalculateDistinct(listValues);
-                    var precision = delta / distinct;
+                    var precision = (double)delta / (double)distinct;
                     naiveBayesModel.DataModel.Attributes[i].Precision = precision; 
                     for (var row = 0; row < naiveBayesModel.DataModel.Data.Count; row++)
                     {
@@ -166,12 +166,13 @@ namespace NaiveBayes
                     {
                         if (pairAttribute.Definition.Count == 1 && pairAttribute.Definition[0].Equals("Real", StringComparison.InvariantCultureIgnoreCase))
                         {
+                            var normalizedValue = Math.Round(Double.Parse(current.Value.ToString()) / pairAttribute.Precision, 0) * pairAttribute.Precision; 
                             //continuous
                             var searchedClasses = _naiveBayesModel.OcurrenceMatrix.Where(m => m.GetAttributeName().Equals(current.DataName, StringComparison.InvariantCultureIgnoreCase) && m.GetTargetClass().Equals(_naiveBayesModel.TargetAttributeClasses[i].ClassName, StringComparison.InvariantCultureIgnoreCase)).First();
                             // formula!!!
                             var values = searchedClasses.GetValues();
 
-                            var probabilityValue = normalDistribution((double)current.Value, values[0], values[1], false);
+                            var probabilityValue = normalDistribution(normalizedValue, values[0], values[1], false);
                             probabilityList.Add(probabilityValue);
                         }
                         else
@@ -194,8 +195,9 @@ namespace NaiveBayes
             {
                 probability.Percentage = (probability.Probability / sumProbabilities) * 100;
             }
-            var graterProbability = probabilityResultList.OrderBy(x => x.Percentage).First();
-            result.resultAttribute
+            var greaterProbability = probabilityResultList.OrderByDescending(x => x.Percentage).First();
+            result.ResultAttribute = greaterProbability.ClassName;
+            result.Values = greaterProbability.Percentage;
             return result;
         }
         
@@ -216,7 +218,7 @@ namespace NaiveBayes
         {
             double result = 0.0;
             values = values.OrderBy(m => m).ToList();
-            result = values.Distinct().Count();
+            result = values.Distinct().Count() - 1 ;
             return result;
         }
 
