@@ -6,15 +6,15 @@ namespace NaiveBayes
 {
     public class NaiveBayesModel
     {
-        private ArffModel _originalData;
+        private ArffModel _dataModel;
         private string _targetAttribute;
         private IList<AttributeValue> _targetAttributeClasses = new List<AttributeValue>();
         private IList<IOcurrenceModel> _ocurrenceMatrix = new List<IOcurrenceModel>();
 
-        public ArffModel OriginalData
+        public ArffModel DataModel
         {
-            get { return _originalData; }
-            set { _originalData = value; }
+            get { return _dataModel; }
+            set { _dataModel = value; }
         }
 
         public string TargetAttribute
@@ -45,6 +45,8 @@ namespace NaiveBayes
     {
         public string ClassName { get; set; }
         public double Probability { get; set; }
+        public double Precision { get; set; }
+        public double ThirdStd { get; set; }
     }
     
     public class OcurrenceModelFactory
@@ -69,14 +71,34 @@ namespace NaiveBayes
     public interface IOcurrenceModel
     {
         bool IsContinuous { get; }
-        IList<double> GetValues(string currentAttribute, string className);
+        string GetAttributeName();
+        string GetAttributeValue();
+        string GetTargetClass();
+        IList<double> GetValues();
     }
 
-    public abstract class OcurrenceModelBase
+    public abstract class OcurrenceModelBase 
     {
         public string CurrentAttributeName { get; set; }
+        public string CurrentAttributeValue { get; set; }
         public string TargetAttributeClassName { get; set; }
         public abstract bool IsContinuous { get; }
+
+        public string GetAttributeName()
+        {
+            return CurrentAttributeName;
+        }
+
+        public string GetAttributeValue()
+        {
+            return CurrentAttributeValue;
+        }
+
+        public string GetTargetClass()
+        {
+            return TargetAttributeClassName;
+        }
+
     }
 
     public class ContinousAttributeOcurrenceModel : OcurrenceModelBase, IOcurrenceModel
@@ -87,7 +109,9 @@ namespace NaiveBayes
         public double Precision { get; set; }
         public override bool IsContinuous { get { return true; } }
 
-        public IList<double> GetValues(string currentAttribute, string className)
+        
+
+        public IList<double> GetValues()
         {
             var listValues = new List<double>
             {
@@ -102,7 +126,7 @@ namespace NaiveBayes
         public double Value { get; set; }
         public override bool IsContinuous { get { return false; } }
 
-        public IList<double> GetValues(string currentAttribute, string className)
+        public IList<double> GetValues()
         {
             var listValues = new List<double> { Value };
             return listValues;

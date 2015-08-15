@@ -10,7 +10,6 @@ namespace NaiveBayes
         double GetMean();
         double GetStandardDeviation();
         double GetWeightSum();
-        double GetPrecision();
     }
 
     public class StandardDeviation : IDistribution
@@ -38,11 +37,7 @@ namespace NaiveBayes
             }
             return stddev;
         }
-
-        public double GetPrecision()
-        {
-            return 0;
-        }
+        
 
         public double GetWeightSum()
         {

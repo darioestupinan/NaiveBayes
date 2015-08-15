@@ -17,8 +17,10 @@ namespace FileLoaderTester
             using (var textReader = new StreamReader(arffFilePath, Encoding.UTF8))
             {
                 var processedFile = fileProcesser.Process(textReader.ReadToEnd());
-                var naiveBayes = new NaiveBayes.NaiveBayes(processedFile, null, null, "Drug");
+                var naiveBayes = new NaiveBayes.NaiveBayes(processedFile, null, "Drug");
                 naiveBayes.TrainFromSet();
+
+
             };
         }
     }

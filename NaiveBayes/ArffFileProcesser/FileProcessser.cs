@@ -83,13 +83,17 @@ namespace ArffFileProcesser
             {
                 for (var j = 0; j < words.Count; j++)
                 {
-                    _model.Attributes[j].AddValues(words[j]);
                     if (_model.Attributes[j].Definition.Count == 1 && _model.Attributes[j].Definition[0].Equals("Real", StringComparison.InvariantCultureIgnoreCase))
                     {
                         var numericValue = Double.Parse(words[j]);
+                        _model.Attributes[j].AddValues(numericValue);
                         row.Add(numericValue);
                     }
-                    else row.Add(words[j]);
+                    else
+                    {
+                        row.Add(words[j]);
+                        _model.Attributes[j].AddValues(words[j]);
+                    }
                 }
                 _model.AddDataRow(row);
             }
