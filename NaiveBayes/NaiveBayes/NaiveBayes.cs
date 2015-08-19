@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.UI.DataVisualization.Charting;
+using Attribute = ArffFileProcesser.Attribute;
+
 #endregion
 
 namespace NaiveBayes
@@ -14,13 +16,11 @@ namespace NaiveBayes
     {
         #region Attributes
 
-        private ArffModel _model = new ArffModel();
+        private readonly ArffModel _model = new ArffModel();
         
         private readonly OcurrenceModelFactory _ocurrenceModelFactory = new OcurrenceModelFactory();
 
-        private readonly List<string> _ignoreAttributes;
-
-        private string _targetAttribute;
+        private readonly string _targetAttribute;
 
         private NaiveBayesModel _naiveBayesModel;
 
@@ -31,10 +31,9 @@ namespace NaiveBayes
 
         #region Constructors
 
-        public NaiveBayes(ArffModel modelFromFile, List<string> ignoredAttributes, string targetAttribute)
+        public NaiveBayes(ArffModel modelFromFile, string targetAttribute)
         {
             _model = modelFromFile;
-            _ignoreAttributes = ignoredAttributes;
             _targetAttribute = targetAttribute;
         }
 
@@ -42,169 +41,232 @@ namespace NaiveBayes
 
         #region Public Methods
 
-        
-
         public void TrainFromSet()
         {
-            var naiveBayesModel = new NaiveBayesModel();
-            naiveBayesModel.DataModel = _model;
-            naiveBayesModel.TargetAttribute = _targetAttribute;
-            //first identify the possible values of the target Attribute 
-            var targetAttribute = naiveBayesModel.DataModel.Attributes.Where(attrib => attrib.Name.Equals(_targetAttribute, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
-            var targetAttributeClassesCount = targetAttribute.Definition.Count();
-            var totalData = targetAttribute.Values.Count();
-            // calculate precision  and 3-std
-            for (var i = 0; i < naiveBayesModel.DataModel.Attributes.Count(); i++)
+            _naiveBayesModel = new NaiveBayesModel();
+            _naiveBayesModel.DataModel = _model;
+            _naiveBayesModel.TargetAttribute = _targetAttribute;
+            ArffFileProcesser.Attribute targetAttribute = FindTargetAttribute();
+            var targetAttribIndex = FindTargetAttribIndex();
+            if (targetAttribute != null)
             {
-                var currentAttribute = naiveBayesModel.DataModel.Attributes[i];
+                var totalData = targetAttribute.Values.Count();
+                // calculate precision 
+                CalculatePrecision();
+                //calculate probability of the classes identified
+                CalculateProbability(targetAttribute, totalData);
+            }
+            //change foreach continuous values the value according to the formula  value = ParteEntera (original value / precision ) * precision 
+            //calculate possibilities foreach class within each value of other attribute
+            //find the target attribute index
+            CreateNormalizedData(targetAttribIndex);
+            IFileLoader loader = new FileLoader.FileLoader();
+            loader.SaveJsonFileToText(JsonConvert.SerializeObject(_naiveBayesModel), string.Empty);
+        }
+
+        public ResultModel TestNewData (IList<TestData> data)
+        {
+            var result = new ResultModel();
+            var probabilityResultList = new List<ProbabilityResult>();
+            for (var i = 0; i < _naiveBayesModel.TargetAttributeClasses.Count; i++)
+                CalculateProbability(data, i, ref probabilityResultList);
+            var sumProbabilities = probabilityResultList.Select(x => x.Probability).Sum();
+            foreach (var probability in probabilityResultList)
+                probability.Percentage = (probability.Probability/sumProbabilities)*100;
+            var greaterProbability = probabilityResultList.OrderByDescending(x => x.Percentage).First();
+            result.ResultAttribute = greaterProbability.ClassName;
+            result.Values = greaterProbability.Percentage;
+            return result;
+        }
+
+        private void CalculateProbability(IList<TestData> data, int i, ref List<ProbabilityResult> probabilityResultList)
+        {
+            var probabilityList = new List<double>();
+            var classProbability = _naiveBayesModel.TargetAttributeClasses[i].Probability;
+            probabilityList.Add(classProbability);
+            for (var j = 0; j < data.Count; j++)
+            {
+                var current = data[j];
+                var pairAttribute = FindPairAttribute(current);
+                if (pairAttribute != null)
+                    CalculateProbabilityForAttribute(i, pairAttribute, current, ref probabilityList);
+            }
+            var probabilityResult = new ProbabilityResult();
+            probabilityResult.ClassName = _naiveBayesModel.TargetAttributeClasses[i].ClassName;
+            probabilityResult.Probability = probabilityList.Aggregate((a, x) => a*x);
+            probabilityResultList.Add(probabilityResult);
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        private int FindTargetAttribIndex()
+        {
+            return _naiveBayesModel.DataModel.Attributes.ToList().FindIndex(attr => attr.Name.Equals(_naiveBayesModel.TargetAttribute, StringComparison.InvariantCultureIgnoreCase));
+        }
+
+        private void CreateNormalizedData(int targetAttribIndex)
+        {
+            for (var i = 0; i < _naiveBayesModel.DataModel.Attributes.Count(); i++)
+            {
+                var attribute = _naiveBayesModel.DataModel.Attributes[i];
+                var currentAttributteName = attribute.Name;
+                if (attribute.Name.Equals(_targetAttribute, StringComparison.InvariantCultureIgnoreCase)) continue;
+                if (attribute.Definition.Count() == 1 && attribute.Definition[0].Equals("Real", StringComparison.InvariantCultureIgnoreCase))
+                    //continuous
+                    CreateContinuousModel(targetAttribIndex, attribute, i);
+                else
+                //discrete
+                    CreateDiscreteModel(targetAttribIndex, attribute, currentAttributteName, i);
+            }
+        }
+
+        private void CreateDiscreteModel(int targetAttribIndex, Attribute attribute, string currentAttributteName, int i)
+        {
+            foreach (var classes in _naiveBayesModel.TargetAttributeClasses)
+            {
+                var ocurrenceModelList = new List<IOcurrenceModel>();
+                // total ocurrences by class
+                var selectedData = _naiveBayesModel.DataModel.Data.Cast<List<object>>().Where(item =>item[targetAttribIndex].ToString().Trim().Equals(classes.ClassName, StringComparison.InvariantCultureIgnoreCase)).ToList();
+                for (var j = 0; j < attribute.Definition.Count; j++)
+                {
+                    var ocurrenceModel = new DiscreteAttributeOcurrenceModel();
+                    ocurrenceModel.CurrentAttributeName = currentAttributteName;
+                    ocurrenceModel.CurrentAttributeValue = attribute.Definition[j];
+                    ocurrenceModel.TargetAttributeClassName = classes.ClassName;
+                    // ocurrences of the current definition by class
+                    var value = ((double) selectedData.Cast<List<object>>().Where(item =>item[i].ToString().Equals(attribute.Definition[j], StringComparison.InvariantCultureIgnoreCase)) .Count() + 1.0)/((double) selectedData.Count + (double) attribute.Definition.Count);
+                    ocurrenceModel.Value = value;
+                    ocurrenceModelList.Add(ocurrenceModel);
+                }
+                //total of the current attribute in range of the class
+                var totalOcurrenceModel = new DiscreteAttributeOcurrenceModel();
+                totalOcurrenceModel.CurrentAttributeName = currentAttributteName + " total";
+                totalOcurrenceModel.TargetAttributeClassName = classes.ClassName;
+                totalOcurrenceModel.Value = ocurrenceModelList.Cast<DiscreteAttributeOcurrenceModel>().Sum(m => m.Value);
+                ocurrenceModelList.Add(totalOcurrenceModel);
+                _naiveBayesModel.AddOcurrenceMatrixRange(ocurrenceModelList);
+            }
+        }
+
+        private void CreateContinuousModel(int targetAttribIndex, Attribute attribute, int i)
+        {
+            foreach (var classes in _naiveBayesModel.TargetAttributeClasses)
+            {
+                var ocurrenceModelList = new List<IOcurrenceModel>();
+                var selectedData = _naiveBayesModel.DataModel.Data.Cast<List<object>>().Where(item =>item[targetAttribIndex].ToString().Trim().Equals(classes.ClassName, StringComparison.InvariantCultureIgnoreCase)).ToList();
+                for (var j = 0; j < attribute.Definition.Count; j++)
+                {
+                    var ocurrenceModel = new ContinousAttributeOcurrenceModel();
+                    ocurrenceModel.CurrentAttributeName = attribute.Name;
+                    ocurrenceModel.TargetAttributeClassName = classes.ClassName;
+                    var selectedItemsValues = selectedData.Select(s => (double) s[i]).ToList();
+                    var currentDistribution = new StandardDeviation(selectedItemsValues);
+                    ocurrenceModel.Mean = currentDistribution.GetMean();
+                    ocurrenceModel.StdDev = currentDistribution.GetStandardDeviation();
+                    ocurrenceModel.WeightSum = currentDistribution.GetWeightSum();
+                    ocurrenceModel.Precision = _naiveBayesModel.DataModel.Attributes[i].Precision;
+                    ocurrenceModelList.Add(ocurrenceModel);
+                }
+                _naiveBayesModel.AddOcurrenceMatrixRange(ocurrenceModelList);
+            }
+        }
+
+        private ArffFileProcesser.Attribute FindTargetAttribute()
+        {
+            //first identify the possible values of the target Attribute 
+            return _naiveBayesModel.DataModel.Attributes.FirstOrDefault(attrib => attrib.Name.Equals(_targetAttribute, StringComparison.InvariantCultureIgnoreCase));
+        }
+
+        private void CalculateProbability(ArffFileProcesser.Attribute targetAttribute, int totalData)
+        {
+            foreach (var definitionClass in targetAttribute.Definition)
+            {
+                var current = new AttributeValue();
+                current.ClassName = definitionClass;
+                current.Probability = (double)targetAttribute.Values.Where(val => val.ToString().Equals(definitionClass, StringComparison.InvariantCultureIgnoreCase)).Count() / (double)totalData;
+                _naiveBayesModel.TargetAttributeClasses.Add(current);
+            }
+        }
+
+        private void CalculatePrecision()
+        {
+            for (var i = 0; i < _naiveBayesModel.DataModel.Attributes.Count(); i++)
+            {
+                var currentAttribute = _naiveBayesModel.DataModel.Attributes[i];
                 if (currentAttribute.Definition.Count() == 1 && currentAttribute.Definition[0].Equals("Real", StringComparison.InvariantCultureIgnoreCase))
                 {
                     var listValues = currentAttribute.Values.Cast<double>().ToList();
                     var delta = CalculateDelta(listValues);
                     var distinct = CalculateDistinct(listValues);
                     var precision = (double)delta / (double)distinct;
-                    naiveBayesModel.DataModel.Attributes[i].Precision = precision; 
-                    for (var row = 0; row < naiveBayesModel.DataModel.Data.Count; row++)
+                    _naiveBayesModel.DataModel.Attributes[i].Precision = precision;
+                    for (var row = 0; row < _naiveBayesModel.DataModel.Data.Count; row++)
                     {
-                        var newValue = Math.Round((double)naiveBayesModel.DataModel.Data[row][i] / precision, 0) * precision;
-                        naiveBayesModel.DataModel.Data[row][i] = newValue;
-                    }                                        
-                }
-            }
-            //calculate probability of the classes identified
-            foreach (var definitionClass in targetAttribute.Definition)
-            {
-                var current = new AttributeValue();
-                current.ClassName = definitionClass;
-                current.Probability = (double)targetAttribute.Values.Where(val => val.ToString().Equals(definitionClass, StringComparison.InvariantCultureIgnoreCase)).Count() / (double)totalData;
-                naiveBayesModel.TargetAttributeClasses.Add(current);
-            }
-            // change foreach continuous values the value according to the formula  value = ParteEntera (original value / precision ) * precision 
-
-
-            //calculate possibilities foreach class within each value of other attribute
-            //find the target attribute index
-            var targetAttribIndex = naiveBayesModel.DataModel.Attributes.ToList().FindIndex(attr => attr.Name.Equals(naiveBayesModel.TargetAttribute, StringComparison.InvariantCultureIgnoreCase));
-            for (var i=0; i< naiveBayesModel.DataModel.Attributes.Count(); i++)
-            {
-                var attribute = naiveBayesModel.DataModel.Attributes[i];
-                var currentAttributteName = attribute.Name;
-                if (attribute.Name.Equals(_targetAttribute, StringComparison.InvariantCultureIgnoreCase)) continue;
-                if (attribute.Definition.Count() == 1 && attribute.Definition[0].Equals("Real", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    //continuous
-                    foreach (var classes in naiveBayesModel.TargetAttributeClasses)
-                    {
-                        var ocurrenceModelList = new List<IOcurrenceModel>();
-                        var selectedData = naiveBayesModel.DataModel.Data.Cast<List<object>>().Where(item => item[targetAttribIndex].ToString().Trim().Equals(classes.ClassName, StringComparison.InvariantCultureIgnoreCase)).ToList();
-                        for (var j = 0; j < attribute.Definition.Count; j++)
-                        {
-                            var ocurrenceModel = new ContinousAttributeOcurrenceModel();
-                            ocurrenceModel.CurrentAttributeName = attribute.Name;
-                            ocurrenceModel.TargetAttributeClassName = classes.ClassName;
-                            var selectedItemsValues = selectedData.Cast<List<object>>().Select(s => (double)s[i]).ToList();
-                            var currentDistribution = new StandardDeviation(selectedItemsValues);
-                            ocurrenceModel.Mean = currentDistribution.GetMean();
-                            ocurrenceModel.StdDev = currentDistribution.GetStandardDeviation();
-                            ocurrenceModel.WeightSum = currentDistribution.GetWeightSum();
-                            ocurrenceModel.Precision = naiveBayesModel.DataModel.Attributes[i].Precision;
-                            ocurrenceModelList.Add(ocurrenceModel);
-                        }
-                        naiveBayesModel.AddOcurrenceMatrixRange(ocurrenceModelList);
-                    }
-                }
-                else
-                {
-                    //discrete
-                    foreach (var classes in naiveBayesModel.TargetAttributeClasses)
-                    {
-                        var ocurrenceModelList = new List<IOcurrenceModel>();
-                        // total ocurrences by class
-                        var selectedData = naiveBayesModel.DataModel.Data.Cast<List<object>>().Where(item => item[targetAttribIndex].ToString().Trim().Equals(classes.ClassName, StringComparison.InvariantCultureIgnoreCase)).ToList();
-                        for (var j = 0; j < attribute.Definition.Count; j++)
-                        {
-                            var ocurrenceModel = new DiscreteAttributeOcurrenceModel();
-                            ocurrenceModel.CurrentAttributeName = currentAttributteName;
-                            ocurrenceModel.CurrentAttributeValue = attribute.Definition[j];
-                            ocurrenceModel.TargetAttributeClassName =  classes.ClassName;
-                            // ocurrences of the current definition by class
-                            var value = ((double)selectedData.Cast<List<object>>().Where(item => item[i].ToString().Equals(attribute.Definition[j], StringComparison.InvariantCultureIgnoreCase)).Count() + 1.0) / ((double)selectedData.Count + (double)attribute.Definition.Count);
-                            ocurrenceModel.Value = value;
-                            ocurrenceModelList.Add(ocurrenceModel);
-                        }
-                        //total of the current attribute in range of the class
-                        var totalOcurrenceModel = new DiscreteAttributeOcurrenceModel();
-                        totalOcurrenceModel.CurrentAttributeName = currentAttributteName + " total";
-                        totalOcurrenceModel.TargetAttributeClassName = classes.ClassName;
-                        totalOcurrenceModel.Value = ocurrenceModelList.Cast<DiscreteAttributeOcurrenceModel>().Sum(m=>m.Value);
-                        ocurrenceModelList.Add(totalOcurrenceModel);
-                        naiveBayesModel.AddOcurrenceMatrixRange(ocurrenceModelList);
+                        var newValue = Math.Round((double)_naiveBayesModel.DataModel.Data[row][i] / precision, 0) * precision;
+                        _naiveBayesModel.DataModel.Data[row][i] = newValue;
                     }
                 }
             }
-            IFileLoader loader = new FileLoader.FileLoader();
-            loader.SaveJsonFileToText(JsonConvert.SerializeObject(naiveBayesModel), string.Empty);
-            _naiveBayesModel = naiveBayesModel;
         }
 
-        public ResultModel TestNewData (IList<TestData> data)
+        private void CalculateProbabilityForAttribute(int i, Attribute pairAttribute, TestData current, ref List<double> probabilityList)
         {
-            var result = new ResultModel();
-            var targetAttribute = _naiveBayesModel.DataModel.Attributes.Where(attrib => attrib.Name.Equals(_targetAttribute, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
-            var targetAttribIndex = _naiveBayesModel.DataModel.Attributes.ToList().FindIndex(attr => attr.Name.Equals(_naiveBayesModel.TargetAttribute, StringComparison.InvariantCultureIgnoreCase));
-            var probabilityResultList = new List<ProbabilityResult>();
-            for (var i = 0; i < _naiveBayesModel.TargetAttributeClasses.Count; i++)
+            if (pairAttribute.Definition.Count == 1 &&
+                pairAttribute.Definition[0].Equals("Real", StringComparison.InvariantCultureIgnoreCase))
             {
-                var probabilityList = new List<double>();
-                var classProbability =_naiveBayesModel.TargetAttributeClasses[i].Probability;
-                probabilityList.Add(classProbability);
-                for (var j=0; j < data.Count; j++)
-                {
-                    var current = data[j];
-                    var pairAttribute = _naiveBayesModel.DataModel.Attributes.Where(item => item.Name.Equals(current.DataName, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
-                    if (pairAttribute != null)
-                    {
-                        if (pairAttribute.Definition.Count == 1 && pairAttribute.Definition[0].Equals("Real", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            var normalizedValue = Math.Round(Double.Parse(current.Value.ToString()) / pairAttribute.Precision, 0) * pairAttribute.Precision; 
-                            //continuous
-                            var searchedClasses = _naiveBayesModel.OcurrenceMatrix.Where(m => m.GetAttributeName().Equals(current.DataName, StringComparison.InvariantCultureIgnoreCase) && m.GetTargetClass().Equals(_naiveBayesModel.TargetAttributeClasses[i].ClassName, StringComparison.InvariantCultureIgnoreCase)).First();
-                            // formula!!!
-                            var values = searchedClasses.GetValues();
-
-                            var probabilityValue = normalDistribution(normalizedValue, values[0], values[1], false);
-                            probabilityList.Add(probabilityValue);
-                        }
-                        else
-                        {
-                            //discrete
-                            var searchedClasses = _naiveBayesModel.OcurrenceMatrix.Where(m => m.GetAttributeName().Equals(current.DataName, StringComparison.InvariantCultureIgnoreCase) && m.GetAttributeValue().Equals(current.Value.ToString(), StringComparison.InvariantCultureIgnoreCase) && m.GetTargetClass().Equals(_naiveBayesModel.TargetAttributeClasses[i].ClassName, StringComparison.InvariantCultureIgnoreCase)).First();
-                            var value = searchedClasses.GetValues().First();
-                            // formula time!!! 
-                            probabilityList.Add(value);                                
-                        }
-                    }
-                }
-                var probabilityResult = new ProbabilityResult();
-                probabilityResult.ClassName = _naiveBayesModel.TargetAttributeClasses[i].ClassName;
-                probabilityResult.Probability = probabilityList.Aggregate((a, x) => a * x);
-                probabilityResultList.Add(probabilityResult);
+                var probabilityValue = GetProbabilityForContinuousValues(i, current, pairAttribute);
+                probabilityList.Add(probabilityValue);
             }
-            var sumProbabilities = probabilityResultList.Select(x => x.Probability).Sum();
-            foreach (var probability in probabilityResultList)
+            else
             {
-                probability.Percentage = (probability.Probability / sumProbabilities) * 100;
+                //discrete
+                var searchedClasses = FindDiscreteSearchedClasses(i, current);
+                var value = searchedClasses.GetValues().First();
+                probabilityList.Add(value);
             }
-            var greaterProbability = probabilityResultList.OrderByDescending(x => x.Percentage).First();
-            result.ResultAttribute = greaterProbability.ClassName;
-            result.Values = greaterProbability.Percentage;
-            return result;
         }
-        
-        #endregion
 
-        #region Private Methods
-        
+        private IOcurrenceModel FindDiscreteSearchedClasses(int i, TestData current)
+        {
+            return _naiveBayesModel.OcurrenceMatrix.First(
+                m =>
+                    m.GetAttributeName().Equals(current.DataName, StringComparison.InvariantCultureIgnoreCase) &&
+                    m.GetAttributeValue()
+                        .Equals(current.Value.ToString(), StringComparison.InvariantCultureIgnoreCase) &&
+                    m.GetTargetClass()
+                        .Equals(_naiveBayesModel.TargetAttributeClasses[i].ClassName,
+                            StringComparison.InvariantCultureIgnoreCase));
+        }
+
+        private double GetProbabilityForContinuousValues(int i, TestData current, Attribute pairAttribute)
+        {
+            var normalizedValue = CalculateNormalizedValue(current, pairAttribute);
+            //continuous
+            var searchedClasses = FindContinuousSearchedClasses(i, current);
+            // formula!!!
+            var values = searchedClasses.GetValues();
+
+            var probabilityValue = NormalDistribution(normalizedValue, values[0], values[1], false);
+            return probabilityValue;
+        }
+
+        private IOcurrenceModel FindContinuousSearchedClasses(int i, TestData current)
+        {
+            return _naiveBayesModel.OcurrenceMatrix.First(m => m.GetAttributeName().Equals(current.DataName, StringComparison.InvariantCultureIgnoreCase) && m.GetTargetClass().Equals(_naiveBayesModel.TargetAttributeClasses[i].ClassName, StringComparison.InvariantCultureIgnoreCase));
+        }
+
+        private static double CalculateNormalizedValue(TestData current, Attribute pairAttribute)
+        {
+            return Math.Round(Double.Parse(current.Value.ToString()) / pairAttribute.Precision, 0) * pairAttribute.Precision;
+        }
+
+        private Attribute FindPairAttribute(TestData current)
+        {
+            return _naiveBayesModel.DataModel.Attributes.FirstOrDefault(item => item.Name.Equals(current.DataName, StringComparison.InvariantCultureIgnoreCase));
+        }
+
         private double CalculateDelta (IList<double> values)
         {
             double result = 0.0;
@@ -225,7 +287,7 @@ namespace NaiveBayes
 
         // from http://www.cs.princeton.edu/introcs/...Math.java.html
         // fractional error less than 1.2 * 10 ^ -7.
-        private static double normalDistribution(double x, double mean, double std, bool cumulative)
+        private static double NormalDistribution(double x, double mean, double std, bool cumulative)
         {
             if (cumulative)
             {

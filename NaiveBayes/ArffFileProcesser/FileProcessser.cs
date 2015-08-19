@@ -9,11 +9,6 @@ using System.Text.RegularExpressions;
 
 namespace ArffFileProcesser
 {
-    public interface IFileProcesser<out TFileProcessed>
-    {
-        ArffModel Process(object input);
-    }
-
     public class SimpleFileProcceser : IFileProcesser<string>
     {
         #region Attributes

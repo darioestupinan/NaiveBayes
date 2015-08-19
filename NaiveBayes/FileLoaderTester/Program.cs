@@ -2,6 +2,7 @@
 using FileLoader;
 using NaiveBayes;
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -18,16 +19,31 @@ namespace FileLoaderTester
             using (var textReader = new StreamReader(arffFilePath, Encoding.UTF8))
             {
                 var processedFile = fileProcesser.Process(textReader.ReadToEnd());
-                var naiveBayes = new NaiveBayes.NaiveBayes(processedFile, null, "Drug");
+                var naiveBayes = new NaiveBayes.NaiveBayes(processedFile, "Drug");
                 naiveBayes.TrainFromSet();
 
-                var testModel = new TestDataModel();
-                var result = naiveBayes.TestNewData(testModel.TestData);
+                for (var i = 0; i < processedFile.Data.Count; i++)
+                {
+                    var testData = new TestDataModel(processedFile.Data[i]);
+                    var currentResult = naiveBayes.TestNewData(testData.TestData);
 
-                Console.WriteLine("the recommended drug is : " + result.ResultAttribute);
-                Console.WriteLine("the porcentage of accuracy is: " + result.Values.ToString());
+                    PrintResultValue(currentResult);
+                }
+
+                //var testModel = new TestDataModel();
+                //var result = naiveBayes.TestNewData(testModel.TestData);
+
+                //PrintResultValue(result);
+
                 Console.ReadKey();
             };
+        }
+
+        private static void PrintResultValue(ResultModel result)
+        {
+            Console.WriteLine("the recommended drug is : " + result.ResultAttribute);
+            Console.WriteLine("the porcentage of accuracy is: " + result.Values.ToString(CultureInfo.InvariantCulture));
+            
         }
     }
 }
