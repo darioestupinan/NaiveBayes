@@ -41,6 +41,11 @@ namespace NaiveBayes
 
         #region Public Methods
 
+        public NaiveBayesModel GetModel()
+        {
+            return _naiveBayesModel;
+        }
+
         public void TrainFromSet()
         {
             _naiveBayesModel = new NaiveBayesModel();

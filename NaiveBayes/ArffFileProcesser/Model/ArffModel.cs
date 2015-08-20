@@ -5,7 +5,7 @@ namespace ArffFileProcesser
     public class ArffModel
     {
         private IList<Attribute> _attributes = new List<Attribute>();
-        private IList<IList<object>> _data = new List<IList<object>>();
+        private readonly IList<IList<object>> _data = new List<IList<object>>();
 
         public string Relation { get; set; }
         public IList<Attribute> Attributes

@@ -33,8 +33,7 @@ namespace FileLoader
                 var defaultPath = ConfigurationManager.AppSettings["defaultPath"];
                 var defaultFile = ConfigurationManager.AppSettings["defaultJsonFile"];
                 var defaultFiletype = ConfigurationManager.AppSettings["defaultJsonType"];
-                var timestamp = System.DateTime.Now.ToString("H-mm-ss-dd-MM-yyyy");
-                path = defaultPath + "/" + defaultFile + "-" + timestamp + defaultFiletype;
+                path = defaultPath + "/" + defaultFile + defaultFiletype;
             }
             using (var streamWriter = new StreamWriter(path, false, Encoding.UTF8))
             {
