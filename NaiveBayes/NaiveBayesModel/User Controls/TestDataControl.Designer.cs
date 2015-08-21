@@ -30,20 +30,20 @@
         {
             this.panel1 = new System.Windows.Forms.Panel();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.textBoxK = new System.Windows.Forms.TextBox();
+            this.textBoxNa = new System.Windows.Forms.TextBox();
+            this.textBoxCholesterol = new System.Windows.Forms.TextBox();
+            this.textBoxBP = new System.Windows.Forms.TextBox();
+            this.textBoxSex = new System.Windows.Forms.TextBox();
+            this.label7 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
-            this.label1 = new System.Windows.Forms.Label();
-            this.buttonTest = new System.Windows.Forms.Button();
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
             this.textBoxAge = new System.Windows.Forms.TextBox();
-            this.textBoxSex = new System.Windows.Forms.TextBox();
-            this.textBoxBP = new System.Windows.Forms.TextBox();
-            this.textBoxCholesterol = new System.Windows.Forms.TextBox();
-            this.textBoxNa = new System.Windows.Forms.TextBox();
-            this.textBoxK = new System.Windows.Forms.TextBox();
+            this.label1 = new System.Windows.Forms.Label();
+            this.buttonTest = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.tableLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
@@ -86,6 +86,56 @@
             this.tableLayoutPanel1.Size = new System.Drawing.Size(383, 228);
             this.tableLayoutPanel1.TabIndex = 1;
             // 
+            // textBoxK
+            // 
+            this.textBoxK.Location = new System.Drawing.Point(194, 191);
+            this.textBoxK.Name = "textBoxK";
+            this.textBoxK.Size = new System.Drawing.Size(186, 20);
+            this.textBoxK.TabIndex = 11;
+            this.textBoxK.Text = "0.056468";
+            // 
+            // textBoxNa
+            // 
+            this.textBoxNa.Location = new System.Drawing.Point(194, 153);
+            this.textBoxNa.Name = "textBoxNa";
+            this.textBoxNa.Size = new System.Drawing.Size(186, 20);
+            this.textBoxNa.TabIndex = 10;
+            this.textBoxNa.Text = "0.739309";
+            // 
+            // textBoxCholesterol
+            // 
+            this.textBoxCholesterol.Location = new System.Drawing.Point(194, 115);
+            this.textBoxCholesterol.Name = "textBoxCholesterol";
+            this.textBoxCholesterol.Size = new System.Drawing.Size(186, 20);
+            this.textBoxCholesterol.TabIndex = 9;
+            this.textBoxCholesterol.Text = "HIGH";
+            // 
+            // textBoxBP
+            // 
+            this.textBoxBP.Location = new System.Drawing.Point(194, 77);
+            this.textBoxBP.Name = "textBoxBP";
+            this.textBoxBP.Size = new System.Drawing.Size(186, 20);
+            this.textBoxBP.TabIndex = 8;
+            this.textBoxBP.Text = "LOW";
+            // 
+            // textBoxSex
+            // 
+            this.textBoxSex.Location = new System.Drawing.Point(194, 39);
+            this.textBoxSex.Name = "textBoxSex";
+            this.textBoxSex.Size = new System.Drawing.Size(186, 20);
+            this.textBoxSex.TabIndex = 7;
+            this.textBoxSex.Text = "M";
+            // 
+            // label7
+            // 
+            this.label7.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(88, 188);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(14, 13);
+            this.label7.TabIndex = 5;
+            this.label7.Text = "K";
+            // 
             // label2
             // 
             this.label2.Anchor = System.Windows.Forms.AnchorStyles.Top;
@@ -95,25 +145,6 @@
             this.label2.Size = new System.Drawing.Size(26, 13);
             this.label2.TabIndex = 0;
             this.label2.Text = "Age";
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(4, 10);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(158, 13);
-            this.label1.TabIndex = 0;
-            this.label1.Text = "Por favor rellene todos los datos";
-            // 
-            // buttonTest
-            // 
-            this.buttonTest.Location = new System.Drawing.Point(322, 273);
-            this.buttonTest.Name = "buttonTest";
-            this.buttonTest.Size = new System.Drawing.Size(75, 23);
-            this.buttonTest.TabIndex = 1;
-            this.buttonTest.Text = "Test";
-            this.buttonTest.UseVisualStyleBackColor = true;
-            this.buttonTest.Click += new System.EventHandler(this.buttonTest_Click);
             // 
             // label3
             // 
@@ -155,57 +186,32 @@
             this.label6.TabIndex = 4;
             this.label6.Text = "Na";
             // 
-            // label7
-            // 
-            this.label7.Anchor = System.Windows.Forms.AnchorStyles.Top;
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(88, 188);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(14, 13);
-            this.label7.TabIndex = 5;
-            this.label7.Text = "K";
-            // 
             // textBoxAge
             // 
             this.textBoxAge.Location = new System.Drawing.Point(194, 3);
             this.textBoxAge.Name = "textBoxAge";
             this.textBoxAge.Size = new System.Drawing.Size(186, 20);
             this.textBoxAge.TabIndex = 6;
+            this.textBoxAge.Text = "47";
             // 
-            // textBoxSex
+            // label1
             // 
-            this.textBoxSex.Location = new System.Drawing.Point(194, 39);
-            this.textBoxSex.Name = "textBoxSex";
-            this.textBoxSex.Size = new System.Drawing.Size(186, 20);
-            this.textBoxSex.TabIndex = 7;
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(4, 10);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(158, 13);
+            this.label1.TabIndex = 0;
+            this.label1.Text = "Por favor rellene todos los datos";
             // 
-            // textBoxBP
+            // buttonTest
             // 
-            this.textBoxBP.Location = new System.Drawing.Point(194, 77);
-            this.textBoxBP.Name = "textBoxBP";
-            this.textBoxBP.Size = new System.Drawing.Size(186, 20);
-            this.textBoxBP.TabIndex = 8;
-            // 
-            // textBoxCholesterol
-            // 
-            this.textBoxCholesterol.Location = new System.Drawing.Point(194, 115);
-            this.textBoxCholesterol.Name = "textBoxCholesterol";
-            this.textBoxCholesterol.Size = new System.Drawing.Size(186, 20);
-            this.textBoxCholesterol.TabIndex = 9;
-            // 
-            // textBoxNa
-            // 
-            this.textBoxNa.Location = new System.Drawing.Point(194, 153);
-            this.textBoxNa.Name = "textBoxNa";
-            this.textBoxNa.Size = new System.Drawing.Size(186, 20);
-            this.textBoxNa.TabIndex = 10;
-            // 
-            // textBoxK
-            // 
-            this.textBoxK.Location = new System.Drawing.Point(194, 191);
-            this.textBoxK.Name = "textBoxK";
-            this.textBoxK.Size = new System.Drawing.Size(186, 20);
-            this.textBoxK.TabIndex = 11;
+            this.buttonTest.Location = new System.Drawing.Point(322, 273);
+            this.buttonTest.Name = "buttonTest";
+            this.buttonTest.Size = new System.Drawing.Size(75, 23);
+            this.buttonTest.TabIndex = 1;
+            this.buttonTest.Text = "Test";
+            this.buttonTest.UseVisualStyleBackColor = true;
+            this.buttonTest.Click += new System.EventHandler(this.buttonTest_Click);
             // 
             // TestDataControl
             // 

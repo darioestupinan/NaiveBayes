@@ -68,8 +68,8 @@ namespace NaiveBayesModel.Model
             K.Value = (double) row[5];
 
             var Droug = new TestData();
-            K.DataName = "Droug";
-            K.Value = (string) row[6];
+            Droug.DataName = "Droug";
+            Droug.Value = (string) row[6];
 
             _testData = new List<TestData>()
             {

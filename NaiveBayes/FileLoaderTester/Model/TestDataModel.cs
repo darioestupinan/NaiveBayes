@@ -13,7 +13,7 @@ namespace FileLoaderTester
         {
             var Age = new TestData();
             Age.DataName = "Age";
-            Age.Value = 60;
+            Age.Value = 47;
 
             var Sex = new TestData();
             Sex.DataName = "Sex";
@@ -21,7 +21,7 @@ namespace FileLoaderTester
 
             var BP = new TestData();
             BP.DataName = "BP";
-            BP.Value = "NORMAL";
+            BP.Value = "LOW";
 
             var Cholesterol = new TestData();
             Cholesterol.DataName = "Cholesterol";
@@ -29,11 +29,11 @@ namespace FileLoaderTester
 
             var Na = new TestData();
             Na.DataName = "Na";
-            Na.Value = 0.77721;
+            Na.Value = 0.739309;
 
             var K = new TestData();
             K.DataName = "K";
-            K.Value = 0.05123;
+            K.Value = 0.056468;
 
             _testData = new List<TestData>()
             {

@@ -22,18 +22,18 @@ namespace FileLoaderTester
                 var naiveBayes = new NaiveBayes.NaiveBayes(processedFile, "Drug");
                 naiveBayes.TrainFromSet();
 
-                for (var i = 0; i < processedFile.Data.Count; i++)
-                {
-                    var testData = new TestDataModel(processedFile.Data[i]);
-                    var currentResult = naiveBayes.TestNewData(testData.TestData);
+                //for (var i = 0; i < processedFile.Data.Count; i++)
+                //{
+                //    var testData = new TestDataModel(processedFile.Data[i]);
+                //    var currentResult = naiveBayes.TestNewData(testData.TestData);
 
-                    PrintResultValue(currentResult);
-                }
+                //    PrintResultValue(currentResult);
+                //}
 
-                //var testModel = new TestDataModel();
-                //var result = naiveBayes.TestNewData(testModel.TestData);
+                var testModel = new TestDataModel();
+                var result = naiveBayes.TestNewData(testModel.TestData);
 
-                //PrintResultValue(result);
+                PrintResultValue(result);
 
                 Console.ReadKey();
             };
